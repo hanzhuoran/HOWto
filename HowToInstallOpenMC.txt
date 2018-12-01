@@ -1,0 +1,168 @@
+Zhuorans notes on installing OpenMC
+
+Based on Miriam's notes.
+
+######################################################
+First, get the Python packages.
+To do so, install Anaconda following the straightforward directions here: https://www.continuum.io/downloads
+To check what version of Python you are running, in your command line, type: python -V
+
+Once you have conda installed on your system, add the conda-forge channel to your configuration with: 
+conda config --add channels conda-forge
+Using conda install openmc didn't work for me. 
+I got a bunch of python packages by typing: 
+conda install [python package name]
+
+Then, I had to resort to homebrew to get gcc which includes gfortran, a pre-req to installing OpenMC
+I followed the very easy instruction here: https://brew.sh
+I just copied this line into my commmand line: /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+
+To get gcc, type brew install gcc
+
+We worked around compiling fortran manually by installing gcc through homebrew. 
+We worked around compiling MPI by just not making openmc parallelizable for me. 
+
+
+######################################################
+Installing HDF5
+
+wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8/hdf5-1.8.18/src/hdf5-1.8.18.tar.gz
+
+#!/usr/bin/env sh
+INSTALL_DIR=/Library/phdf5 
+BUILD_DIR=/tmp/phdf5-build
+mkdir $INSTALL_DIR
+mkdir $BUILD_DIR
+
+tar xvf hdf5-1.8.18.tar.gz
+
+#MPI version
+cd $BUILD_DIR
+~/Desktop/hdf5tar/hdf5-1.8.18/configure \
+  --prefix=$INSTALL_DIR \
+  --enable-fortran \
+  --enable-fortran2003 \
+  --enable-parallel \
+  CC=mpicc \
+  CXX=mpic++ \
+  F77=mpif90 \
+  FC=mpif90 \
+  2>&1 | tee c.txt
+
+
+#Serial version
+  --enable-fortran \
+  --enable-fortran2003 \
+  CC=gcc \
+  CXX=g++ \
+  F77=gfortran \
+  FC=gfortran \
+
+
+make 2>&1 | tee m.txt
+make check 2>&1 | tee mc.txt
+
+make install 2>&1 | tee mi.txt
+
+######################################################
+
+export DYLD_LIBRARY_PATH=/Library/phdf5/lib:$DYLD_LIBRARY_PATH
+export HDF5_ROOT=/Library/phdf5:$HDF5_ROOT
+export PATH=/Library/phdf5/bin:$PATH
+
+######################################################
+
+cmake -H. -Bbuild -Doptimize=on -Dopenmp=off
+cd build
+make -jN
+
+
+export PYTHONPATH=~/Desktop/OpenMC/openmc
+
+wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+Then get all the python dependencies
+
+#####################################################
+Getting cross-section data
+cd into the openmc folder. 
+mkdir nucleardata
+#In nucleardata, run the script openmc-get-nndc-data which is found in openmc/scripts
+
+python ../scripts/openmc-get-nndc-data
+
+Then, set the variable to this or wherever your cross_sections.xml file is
+
+export OPENMC_CROSS_SECTIONS=~/Desktop/OpenMC/openmc/nucleardata/nndc_hdf5/cross_sections.xml
+
+
+######################################################
+To run openmc (the fortran code that actually simulates the particles), either use "openmc.run()" in Python or you can manually run "openmc" in the terminal.
+
+
+######################################################
+NOT YET DONE
+OpenMC Python API:
+
+The vast majority of our Python code doesn't need any sort of compilation so you can get access to it by just pointing your PYTHON_PATH to the main OpenMC directory (e.g. export PYTHON_PATH=$HOME/openmc:$PYTHON_PATH).  The one Python feature that you need to compile stuff for is resonance reconstruction.  You can build the appropriate files in-place by running
+
+python setup.py build_ext --inplace
+
+Testing OpenMC:
+
+To make sure everything is working properly, go to the OpenMC build directory and run ctest
+
+A copy of bash profile
+#export FC=mpifort
+#export CC=mpicc
+#export CXX=mpicxx
+export FC=gfortran
+export CC=gcc-8
+export CXX=g++-8
+
+# added by Anaconda3 4.4.0 installer
+export PATH="/Users/zhuoranhan/anaconda/bin:$PATH"
+export DYLD_LIBRARY_PATH=/Library/phdf5/lib:$DYLD_LIBRARY_PATH
+export DYLD_LIBRARY_PATH=/usr/local/Cellar/gcc/8.1.0/lib/gcc/8/:$DYLD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/usr/local/Cellar/gcc/8.1.0/lib/gcc/8/:$LD_LIBRARY_PATH
+#export DYLD_LIBRARY_PATH=/usr/local/Cellar/gcc@5/5.5.0_2/lib/gcc/5:$DYLD_LIBRARY_PATH
+#export LD_LIBRARY_PATH=/usr/local/Cellar/gcc@5/5.5.0_2/lib/gcc/5:$LD_LIBRARY_PATH
+export HDF5_ROOT=/Library/phdf5:$HDF5_ROOT
+export PATH=/Library/phdf5/bin:$PATH
+export PATH=/Users/zhuoranhan/MIT/openmc/build/bin:$PATH
+
+export PYTHONPATH=/Users/zhuoranhan/MIT/openmc:$PYTHONPATH
+export PATH=/Users/zhuoranhan/MIT/openmc/scripts:$PATH
+export OPENMC_CROSS_SECTIONS=/Users/zhuoranhan/MIT/nucleardata/nndc_hdf5/cross_sections.xml
+export OPENMC_MULTIPOLE_LIBRARY=/Users/zhuoranhan/MIT/nucleardata/wmp
+export OPENMC_ENDF_DATA=/Users/zhuoranhan/MIT/nucleardata/endf-b-vii.1
+export OPENMC_CHAIN_DATA=/Users/zhuoranhan/MIT/nucleardata/chain/chain_endfb71.xml
+#export HDF5_ROOT=/Users/zhuoranhan/anaconda
+
+##
+# Your previous /Users/zhuoranhan/.bash_profile file was backed up as /Users/zhuoranhan/.bash_profile.macports-saved_2018-06-25_at_17:06:56
+##
+
+# MacPorts Installer addition on 2018-06-25_at_17:06:56: adding an appropriate PATH variable for use with MacPorts.
+export PATH="/opt/local/bin:/opt/local/sbin:$PATH"
+# Finished adapting your PATH environment variable for use with MacPorts.
+export CLICOLOR=1
+export PATH="/usr/local/opt/gettext/bin:$PATH"
+
+alias 212="cd Downloads/22.212"
+alias eofe7="ssh zhuoranh@eofe7.mit.edu"
+alias google="ssh -v -i ~/.ssh/id_rsa zhuoran_han@35.243.208.42"
+alias jn="jupyter notebook"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
